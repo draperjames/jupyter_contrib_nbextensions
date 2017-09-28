@@ -56,15 +56,32 @@ def test_preprocessor_codefolding():
                           metadata={"code_folding": [0]}),
         nbf.new_code_cell(source='\n'.join(["# Codefolding test 2",
                                             "def myfun():",
-                                            "    'GR4CX32ZT'"]),
+                                            "    if True : ",
+                                            "       ",
+                                            "      ",
+                                            "        'GR4CX32ZT'",
+                                            "        ",
+                                            "      "]),
                           metadata={"code_folding": [1]}),
+        nbf.new_code_cell(source='\n'.join(["# Codefolding test 3",
+                                            "def myfun():",
+                                            "    if True : ",
+                                            "       ",
+                                            "      ",
+                                            "        'GR4CX32ZE'",
+                                            "        ",
+                                            "      ",
+                                            "    'GR4CX32ZR'"]),
+                          metadata={"code_folding": [2]})
     ])
-    customconfig = Config(NbConvertApp={'codefolding': True})
+    customconfig = Config(CodeFoldingPreprocessor={'remove_folded_code': True})
     body, resources = export_through_preprocessor(
         notebook_node, CodeFoldingPreprocessor, RSTExporter, 'rst',
         customconfig)
     assert_not_in('AXYZ12AXY', body, 'check firstline fold has worked')
     assert_not_in('GR4CX32ZT', body, 'check function fold has worked')
+    assert_in('GR4CX32ZR', body, 'check if fold has worked')
+    assert_not_in('GR4CX32ZE', body, 'check if fold has worked')
 
 
 def test_preprocessor_svg2pdf():
@@ -90,33 +107,3 @@ def test_preprocessor_svg2pdf():
     assert_true(pdf_existed, 'exported pdf should exist')
     assert_in('test.pdf', body,
               'exported pdf should be referenced in exported notebook')
-
-
-def test_preprocessor_collapsible_headings():
-    """Test collapsible_headings preprocessor."""
-    # check import shortcut
-    from jupyter_contrib_nbextensions.nbconvert_support import CollapsibleHeadingsPreprocessor  # noqa: E501
-    cells = []
-    for lvl in range(6, 1, -1):
-        for collapsed in (True, False):
-            cells.extend([
-                nbf.new_markdown_cell(
-                    source='{} {} heading level {}'.format(
-                        '#' * lvl,
-                        'Collapsed' if collapsed else 'Uncollapsed',
-                        lvl),
-                    metadata={'heading_collapsed': True} if collapsed else {}),
-                nbf.new_markdown_cell(source='\n'.join([
-                    'want hidden' if collapsed else 'want to see',
-                    'what I mean',
-                ])),
-                nbf.new_code_cell(source='\n'.join([
-                    'want hidden' if collapsed else 'want to see',
-                    'what I mean',
-                ])),
-            ])
-    notebook_node = nbf.new_notebook(cells=cells)
-    body, resources = export_through_preprocessor(
-        notebook_node, CollapsibleHeadingsPreprocessor, RSTExporter, 'rst')
-    assert_not_in('hidden', body, 'check text hidden by collapsed headings')
-    assert_in('want to see', body, 'check for text under uncollapsed headings')

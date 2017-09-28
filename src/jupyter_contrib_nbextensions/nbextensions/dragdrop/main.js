@@ -8,9 +8,8 @@ define([
     'base/js/namespace',
     'jquery',
 	'base/js/utils',
-    'services/config',
     "base/js/events"
-], function(IPython, $, utils, configmod, events) {
+], function(IPython, $, utils, events) {
     "use strict";
 
 	var params = {
@@ -18,7 +17,6 @@ define([
 	};
 
     var base_url = utils.get_body_data("baseUrl");
-    var config = new configmod.ConfigSection('notebook', {base_url: base_url});
 
     /* http://stackoverflow.com/questions/3231459/create-unique-id-with-javascript */
     function uniqueid(){
@@ -78,7 +76,7 @@ define([
         utils.promising_ajax(url, settings).then(
             function on_success (data, status, xhr) {
                 var new_cell = IPython.notebook.insert_cell_below('markdown');
-                var str = '<img  src="' + utils.url_path_join(params.subdirectory, name) + '"/>';
+                var str = '![](' + utils.url_path_join(params.subdirectory, name) + ')';
                 new_cell.set_text(str);
                 new_cell.execute();
             },
@@ -99,14 +97,14 @@ define([
         var cell = IPython.notebook.get_selected_cell();
         event.preventDefault();
         if(event.stopPropagation) {event.stopPropagation();}
-            if (event.dataTransfer.items != undefined) {
+
+            if (event.dataTransfer.items !== undefined) {
                 /* Chrome here */
                 var items = event.dataTransfer.items;
                 for (var i = 0; i < items.length; i++) {
                     /* data coming from local file system, must be an image to allow dropping*/
-                    if (items[i].kind == 'file' && items[i].type.indexOf('image/') !== -1) {
-
-                        var blob = items[i].getAsFile();
+                    var blob = items[i].getAsFile();
+                    if (items[i].kind === 'file' && blob.type.indexOf('image/') !== -1) {
                         var filename = blob.name;
                         var reader = new FileReader();
                         reader.onload = ( function(evt) {
@@ -115,7 +113,8 @@ define([
                          } );
                         reader.readAsDataURL(blob);
                     } else {
-                        console.log("Unsupported type:", items[i].kind);
+                        console.log("Unsupported type for file:", blob.name);
+
                     }
                 }
             } else {
@@ -192,14 +191,14 @@ define([
 
     var load_jupyter_extension = function() {
         events.on('create.Cell', create_cell);
-		config.load();
-		config.loaded
-			.then(function () {
-				$.extend(true, params, config.data.dragdrop); // update params
-				if (params.subdirectory) {
-					console.log('subdir:', params.subdirectory)
-				}
-			})
+
+        return IPython.notebook.config.loaded.then(function () {
+            // update params
+            $.extend(true, params, IPython.notebook.config.data.dragdrop);
+            if (params.subdirectory) {
+                console.log('[dragdrop] subdir:', params.subdirectory);
+            }
+        });
     };
 
 	return {
